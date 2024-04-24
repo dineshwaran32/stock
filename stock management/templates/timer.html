@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Countdown Timer</title>
+</head>
+<body>
+  <h1>Countdown Timer</h1>
+  <input type="datetime-local" id="datetime">
+  <p id="countdown"></p>
+  <script>
+    function startCountdown(countdownDate) {
+      var x = setInterval(function() {
+        var now = new Date().getTime();
+        var distance = countdownDate - now;
+        var days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        document.getElementById('countdown').innerHTML = days + 'd ' + hours + 'h ' + minutes + 'm ' + seconds + 's ';
+        
+        // Update the datetime in the database every minute
+        if (distance % (1000 * 60) === 0) {
+          updateDatetimeInDB(new Date(countdownDate - distance));
+        }
+
+        if (distance < 0) {
+          clearInterval(x);
+          document.getElementById('countdown').innerHTML = 'EXPIRED';
+        }
+      }, 1000);
+    }
+
+    function fetchDateTimeAndStartCountdown() {
+      console.log("Fetching date and time...");
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", "/fetch_datetime", true);
+      xhr.onload = function() {
+        if (xhr.status == 200) {
+          var datetime = xhr.responseText.trim();
+          if (datetime) {
+            console.log("Date and time fetched:", datetime);
+            
+            // Remove double quotes
+            datetime = datetime.replace(/^"(.*)"$/, '$1');
+            
+            document.getElementById('datetime').value = datetime;
+            startCountdown(new Date(datetime).getTime());
+          } else {
+            console.error("Datetime value is undefined or empty.");
+          }
+        } else {
+          console.error("Failed to fetch date and time. Status:", xhr.status);
+        }
+      };
+      xhr.onerror = function() {
+        console.error("An error occurred while fetching date and time.");
+      };
+      xhr.send();
+    }
+
+    function updateDatetimeInDB(datetime) {
+      console.log("Updating datetime in the database:", datetime);
+      // Send an asynchronous request to update datetime in the database
+      var xhr = new XMLHttpRequest();
+      xhr.open("POST", "/update_datetime", true);
+      xhr.setRequestHeader("Content-Type", "application/json");
+      xhr.onload = function() {
+        if (xhr.status == 200) {
+          console.log("Datetime updated in the database successfully.");
+        } else {
+          console.error("Failed to update datetime in the database. Status:", xhr.status);
+        }
+      };
+      xhr.onerror = function() {
+        console.error("An error occurred while updating datetime in the database.");
+      };
+      xhr.send(JSON.stringify({ datetime: datetime.toISOString() }));
+    }
+
+    fetchDateTimeAndStartCountdown();
+  </script>
+</body>
+</html>
